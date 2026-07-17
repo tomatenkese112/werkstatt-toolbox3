@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate Werkstatt-Toolbox</title>
+
+<!-- PWA Meta-Tags & Manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#8f2dff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Werkstatt">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, sans-serif; }
+    body { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg,#111,#2b2b2b); color: white; padding: 20px 0; }
+    
+    .container { width: 380px; background: rgba(40,40,40,.75); backdrop-filter: blur(25px); border-radius: 35px; padding: 25px; box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+    
+    /* Offline Badge */
+    .offline-banner { display: none; background: #ff4757; color: white; text-align: center; padding: 6px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 15px; font-weight: bold; }
+
+    /* Modernes Navigations-Dropdown */
+    .nav-container { margin-bottom: 20px; }
+    .nav-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 5px; display: block; }
+    
+    /* Tool & Content Styles */
+    input.tool-input, select.tool-input { width: 100%; padding: 12px; margin: 5px 0 12px 0; border-radius: 10px; border: none; background: #333; color: white; font-size: 0.95rem; }
+    select.tool-input { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='white'><polygon points='0,0 10,0 5,5'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 30px; }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Calculator Styles */
+    .display { width: 100%; height: 60px; background: transparent; border: none; color: white; text-align: right; font-size: 2rem; margin-bottom: 10px; }
+    .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    button { height: 60px; border: none; border-radius: 50%; font-size: 1.5rem; cursor: pointer; color: white; background: #4b4b4b; transition: background 0.2s; }
+    button:active { filter: brightness(1.2); }
+    .gray { background: #a5a5a5; color: black; }
+    .purple { background: #8f2dff; }
+    .zero { grid-column: span 2; border-radius: 40px; }
+
+    /* Buttons allgemein */
+    .action-btn { width: 100%; height: 45px; border-radius: 10px; font-size: 1rem; border: none; cursor: pointer; transition: background 0.2s; }
+    .action-btn:active { filter: brightness(1.2); }
+    
+    /* Gewinde-Tabelle & Allgemeines Tabellen-Design */
+    .filter-group { display: flex; gap: 5px; margin-bottom: 10px; }
+    .filter-btn { flex: 1; padding: 6px; border: 1px solid #555; background: #222; color: #ccc; border-radius: 6px; cursor: pointer; font-size: 0.75rem; }
+    .filter-btn.active { background: #555; color: white; border-color: #777; }
+
+    .table-wrapper { max-height: 250px; overflow-y: auto; border-radius: 10px; background: rgba(0,0,0,0.2); }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #444; }
+    th { background: #333; position: sticky; top: 0; color: #8f2dff; }
+
+    .result-text { margin-top: 15px; font-weight: bold; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div id="offlineBanner" class="offline-banner">Offline-Modus aktiv</div>
+
+    <div class="nav-container">
+        <label class="nav-label" for="toolSelector">Werkzeug wählen</label>
+        <select id="toolSelector" class="tool-input" onchange="switchTool(this.value)" style="margin-bottom:0; background-color: #8f2dff; font-weight: bold;">
+            <option value="calc">Taschenrechner</option>
+            <option value="v-calc">Drehzahl & Schnittgeschw.</option>
+            <option value="thread">Gewindetabelle</option>
+            <option value="convert">Einheiten-Umrechner</option>
+            <option value="weight">Materialgewicht-Rechner</option>
+        </select>
+    </div>
+
+    <!-- 1. Taschenrechner -->
+    <div id="calc" class="tab-content active">
+        <input class="display" id="display" readonly>
+        <div class="buttons">
+            <button class="gray" onclick="clearDisplay()">AC</button>
+            <button class="gray" onclick="append('%')">%</button>
+            <button class="gray" onclick="backspace()">⌫</button>
+            <button class="purple" onclick="append('/')">÷</button>
+            <button onclick="append('7')">7</button><button onclick="append('8')">8</button><button onclick="append('9')">9</button><button class="purple" onclick="append('*')">×</button>
+            <button onclick="append('4')">4</button><button onclick="append('5')">5</button><button onclick="append('6')">6</button><button class="purple" onclick="append('-')">−</button>
+            <button onclick="append('1')">1</button><button onclick="append('2')">2</button><button onclick="append('3')">3</button><button class="purple" onclick="append('+')">+</button>
+            <button class="zero" onclick="append('0')">0</button><button onclick="append('.')">.</button><button class="purple" onclick="calculate()">=</button>
+        </div>
+    </div>
+
+    <!-- 2. Schnittgeschwindigkeit -->
+    <div id="v-calc" class="tab-content">
+        <h3 style="margin-bottom: 10px;">Drehzahl-Rechner (n)</h3>
+        <input class="tool-input" id="vc" placeholder="Schnittgeschwindigkeit Vc (m/min)">
+        <input class="tool-input" id="dia" placeholder="Durchmesser d (mm)">
+        <button class="purple action-btn" onclick="calcVc()">Drehzahl berechnen</button>
+        <p id="res-v" class="result-text">Ergebnis: -</p>
+    </div>
+
+    <!-- 3. Gewinde (M3 bis M30) -->
+    <div id="thread" class="tab-content">
+        <h3 style="margin-bottom: 10px;">Gewinde M3 - M30</h3>
+        <input class="tool-input" id="searchThread" onkeyup="filterThreads()" placeholder="Suchen... (z. B. M8 oder 6.8)">
+        
+        <div class="filter-group">
+            <button class="filter-btn active" onclick="setThreadType('all', this)">Alle</button>
+            <button class="filter-btn" onclick="setThreadType('regel', this)">Regel</button>
+            <button class="filter-btn" onclick="setThreadType('fein', this)">Fein (MF)</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="threadTable">
+                <thead>
+                    <tr>
+                        <th>Gewinde</th>
+                        <th>Steigung</th>
+                        <th>Kernloch Ø</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-type="regel"><td>M3</td><td>0,50 mm</td><td>2,5 mm</td></tr>
+                    <tr data-type="regel"><td>M3,5</td><td>0,60 mm</td><td>2,9 mm</td></tr>
+                    <tr data-type="regel"><td>M4</td><td>0,70 mm</td><td>3,3 mm</td></tr>
+                    <tr data-type="regel"><td>M5</td><td>0,80 mm</td><td>4,2 mm</td></tr>
+                    <tr data-type="regel"><td>M6</td><td>1,00 mm</td><td>5,0 mm</td></tr>
+                    <tr data-type="regel"><td>M7</td><td>1,00 mm</td><td>6,0 mm</td></tr>
+                    <tr data-type="regel"><td>M8</td><td>1,25 mm</td><td>6,8 mm</td></tr>
+                    <tr data-type="regel"><td>M9</td><td>1,25 mm</td><td>7,8 mm</td></tr>
+                    <tr data-type="regel"><td>M10</td><td>1,50 mm</td><td>8,5 mm</td></tr>
+                    <tr data-type="regel"><td>M11</td><td>1,50 mm</td><td>9,5 mm</td></tr>
+                    <tr data-type="regel"><td>M12</td><td>1,75 mm</td><td>10,2 mm</td></tr>
+                    <tr data-type="regel"><td>M14</td><td>2,00 mm</td><td>12,0 mm</td></tr>
+                    <tr data-type="regel"><td>M16</td><td>2,00 mm</td><td>14,0 mm</td></tr>
+                    <tr data-type="regel"><td>M18</td><td>2,50 mm</td><td>15,5 mm</td></tr>
+                    <tr data-type="regel"><td>M20</td><td>2,50 mm</td><td>17,5 mm</td></tr>
+                    <tr data-type="regel"><td>M22</td><td>2,50 mm</td><td>19,5 mm</td></tr>
+                    <tr data-type="regel"><td>M24</td><td>3,00 mm</td><td>21,0 mm</td></tr>
+                    <tr data-type="regel"><td>M27</td><td>3,00 mm</td><td>24,0 mm</td></tr>
+                    <tr data-type="regel"><td>M30</td><td>3,50 mm</td><td>26,5 mm</td></tr>
+                    <tr data-type="fein"><td>M4 x 0,5</td><td>0,50 mm</td><td>3,5 mm</td></tr>
+                    <tr data-type="fein"><td>M5 x 0,5</td><td>0,50 mm</td><td>4,5 mm</td></tr>
+                    <tr data-type="fein"><td>M6 x 0,75</td><td>0,75 mm</td><td>5,2 mm</td></tr>
+                    <tr data-type="fein"><td>M8 x 0,75</td><td>0,75 mm</td><td>7,2 mm</td></tr>
+                    <tr data-type="fein"><td>M8 x 1,0</td><td>1,00 mm</td><td>7,0 mm</td></tr>
+                    <tr data-type="fein"><td>M10 x 1,0</td><td>1,00 mm</td><td>9,0 mm</td></tr>
+                    <tr data-type="fein"><td>M10 x 1,25</td><td>1,25 mm</td><td>8,8 mm</td></tr>
+                    <tr data-type="fein"><td>M12 x 1,0</td><td>1,00 mm</td><td>11,0 mm</td></tr>
+                    <tr data-type="fein"><td>M12 x 1,25</td><td>1,25 mm</td><td>10,8 mm</td></tr>
+                    <tr data-type="fein"><td>M12 x 1,5</td><td>1,50 mm</td><td>10,5 mm</td></tr>
+                    <tr data-type="fein"><td>M14 x 1,25</td><td>1,25 mm</td><td>12,8 mm</td></tr>
+                    <tr data-type="fein"><td>M14 x 1,5</td><td>1,50 mm</td><td>12,5 mm</td></tr>
+                    <tr data-type="fein"><td>M16 x 1,5</td><td>1,50 mm</td><td>14,5 mm</td></tr>
+                    <tr data-type="fein"><td>M18 x 1,5</td><td>1,50 mm</td><td>16,5 mm</td></tr>
+                    <tr data-type="fein"><td>M20 x 1,5</td><td>1,50 mm</td><td>18,5 mm</td></tr>
+                    <tr data-type="fein"><td>M22 x 1,5</td><td>1,50 mm</td><td>20,5 mm</td></tr>
+                    <tr data-type="fein"><td>M24 x 1,5</td><td>1,50 mm</td><td>22,5 mm</td></tr>
+                    <tr data-type="fein"><td>M24 x 2,0</td><td>2,00 mm</td><td>22,0 mm</td></tr>
+                    <tr data-type="fein"><td>M27 x 1,5</td><td>1,50 mm</td><td>25,5 mm</td></tr>
+                    <tr data-type="fein"><td>M27 x 2,0</td><td>2,00 mm</td><td>25,0 mm</td></tr>
+                    <tr data-type="fein"><td>M30 x 1,5</td><td>1,50 mm</td><td>28,5 mm</td></tr>
+                    <tr data-type="fein"><td>M30 x 2,0</td><td>2,00 mm</td><td>28,0 mm</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. Umrechner -->
+    <div id="convert" class="tab-content">
+        <h3 style="margin-bottom:10px;">Umrechner</h3>
+        <select id="convertType" class="tool-input" onchange="updateUnits()">
+            <option value="length">Länge</option>
+            <option value="weight">Gewicht</option>
+            <option value="angle">Winkel</option>
+        </select>
+        <input class="tool-input" id="convertValue" placeholder="Wert eingeben" type="number" step="any">
+        <select id="fromUnit" class="tool-input"></select>
+        <select id="toUnit" class="tool-input"></select>
+        <button class="purple action-btn" onclick="convertUnits()">Umrechnen</button>
+        <p id="convertResult" class="result-text">Ergebnis: -</p>
+    </div>
+
+    <!-- 5. Materialgewicht-Rechner -->
+    <div id="weight" class="tab-content">
+        <h3 style="margin-bottom: 10px;">Materialgewicht</h3>
+        <select id="material" class="tool-input">
+            <option value="7.85">Stahl (7.85 g/cm³)</option>
+            <option value="2.7">Aluminium (2.70 g/cm³)</option>
+            <option value="8.5">Messing (8.50 g/cm³)</option>
+            <option value="8.96">Kupfer (8.96 g/cm³)</option>
+            <option value="7.9">Edelstahl V2A (7.90 g/cm³)</option>
+        </select>
+        <select id="shape" class="tool-input" onchange="updateShapeFields()">
+            <option value="flat">Flach / Platte</option>
+            <option value="round">Rundmaterial / Welle</option>
+        </select>
+        
+        <div id="shapeFields"></div>
+        
+        <button class="purple action-btn" onclick="calcWeight()">Gewicht berechnen</button>
+        <p id="res-weight" class="result-text">Ergebnis: -</p>
+    </div>
+</div>
+
+<script>
+    // --- Service Worker Registrierung ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('Service Worker erfolgreich registriert.'))
+                .catch(err => console.log('Service Worker Registrierung fehlgeschlagen:', err));
+        });
+    }
+
+    // --- Offline-Status Erkennung ---
+    function updateOnlineStatus() {
+        const banner = document.getElementById('offlineBanner');
+        if (!navigator.onLine) {
+            banner.style.display = 'block';
+        } else {
+            banner.style.display = 'none';
+        }
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+
+    // --- App Logik ---
+    function switchTool(tabId) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    const display = document.getElementById("display");
+    function append(v) { display.value += v; }
+    function clearDisplay() { display.value = ""; }
+    function backspace() { display.value = display.value.slice(0, -1); }
+    
+    function calculate() {
+        try {
+            let expression = display.value;
+            expression = expression.replace(/(\d+(?:\.\d+)?)\s*([\+\-])\s*(\d+(?:\.\d+)?)\s*%/g, '$1 $2 ($1 * $3 / 100)');
+            expression = expression.replace(/(\d+(?:\.\d+)?)\s*([\*\/])\s*(\d+(?:\.\d+)?)\s*%/g, '$1 $2 ($3 / 100)');
+            expression = expression.replace(/(\d+(?:\.\d+)?)\s*%/g, '($1 / 100)');
+            let result = eval(expression);
+            display.value = parseFloat(result.toFixed(6)); 
+        } catch {
+            display.value = "Fehler";
+        }
+    }
+
+    function calcVc() {
+        const vc = parseFloat(document.getElementById('vc').value);
+        const d = parseFloat(document.getElementById('dia').value);
+        if(vc && d) {
+            const n = (vc * 1000) / (Math.PI * d);
+            document.getElementById('res-v').innerText = "Drehzahl: " + Math.round(n) + " U/min";
+        } else {
+            document.getElementById('res-v').innerText = "Bitte Werte eingeben";
+        }
+    }
+
+    let currentTypeFilter = 'all';
+    function setThreadType(type, btn) {
+        currentTypeFilter = type;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterThreads();
+    }
+
+    function filterThreads() {
+        const input = document.getElementById("searchThread").value.toUpperCase();
+        const trs = document.getElementById("threadTable").getElementsByTagName("tr");
+        for (let i = 1; i < trs.length; i++) {
+            const text = (trs[i].textContent || trs[i].innerText).toUpperCase();
+            const rowType = trs[i].getAttribute("data-type");
+            const matchesSearch = text.indexOf(input) > -1;
+            const matchesType = (currentTypeFilter === 'all') || (rowType === currentTypeFilter);
+            trs[i].style.display = (matchesSearch && matchesType) ? "" : "none";
+        }
+    }
+
+    const units = {
+        length: { mm: 1, cm: 10, dm: 100, m: 1000 },
+        weight: { g: 1, kg: 1000 }
+    };
+
+    function updateUnits() {
+        const type = document.getElementById("convertType").value;
+        const from = document.getElementById("fromUnit");
+        const to = document.getElementById("toUnit");
+        from.innerHTML = ""; to.innerHTML = "";
+        if(type === "angle"){
+            ["Grad","Radiant"].forEach(unit=>{
+                from.innerHTML += `<option>${unit}</option>`;
+                to.innerHTML += `<option>${unit}</option>`;
+            });
+            return;
+        }
+        Object.keys(units[type]).forEach(unit=>{
+            from.innerHTML += `<option>${unit}</option>`;
+            to.innerHTML += `<option>${unit}</option>`;
+        });
+    }
+
+    function convertUnits(){
+        const type = document.getElementById("convertType").value;
+        const value = parseFloat(document.getElementById("convertValue").value);
+        if(isNaN(value)){
+            document.getElementById("convertResult").innerText="Bitte Wert eingeben";
+            return;
+        }
+        const from = document.getElementById("fromUnit").value;
+        const to = document.getElementById("toUnit").value;
+        let result;
+        if(type==="angle"){
+            if(from===to){ result=value; }
+            else if(from==="Grad"){ result=value*Math.PI/180; }
+            else { result=value*180/Math.PI; }
+        }else{
+            result=value*units[type][from]/units[type][to];
+        }
+        document.getElementById("convertResult").innerText = "Ergebnis: "+result.toFixed(4).replace(/\.?0+$/,'')+" "+to;
+    }
+
+    function updateShapeFields() {
+        const shape = document.getElementById("shape").value;
+        const fields = document.getElementById("shapeFields");
+        if (shape === "flat") {
+            fields.innerHTML = `
+                <input class="tool-input" id="w_l" placeholder="Länge (mm)" type="number">
+                <input class="tool-input" id="w_b" placeholder="Breite (mm)" type="number">
+                <input class="tool-input" id="w_h" placeholder="Dicke/Höhe (mm)" type="number">`;
+        } else {
+            fields.innerHTML = `
+                <input class="tool-input" id="w_d" placeholder="Durchmesser (mm)" type="number">
+                <input class="tool-input" id="w_l" placeholder="Länge (mm)" type="number">`;
+        }
+    }
+
+    function calcWeight() {
+        const density = parseFloat(document.getElementById("material").value);
+        const shape = document.getElementById("shape").value;
+        let volume = 0;
+        if (shape === "flat") {
+            const l = parseFloat(document.getElementById("w_l").value) / 10;
+            const b = parseFloat(document.getElementById("w_b").value) / 10;
+            const h = parseFloat(document.getElementById("w_h").value) / 10;
+            if (l && b && h) volume = l * b * h;
+        } else {
+            const d = parseFloat(document.getElementById("w_d").value) / 10;
+            const l = parseFloat(document.getElementById("w_l").value) / 10;
+            if (d && l) volume = Math.PI * Math.pow(d / 2, 2) * l;
+        }
+        if (volume > 0) {
+            const weightG = volume * density;
+            const weightKg = weightG / 1000;
+            document.getElementById("res-weight").innerText = weightKg >= 1 ? "Gewicht: " + weightKg.toFixed(2) + " kg" : "Gewicht: " + weightG.toFixed(1) + " g";
+        } else {
+            document.getElementById("res-weight").innerText = "Bitte alle Maße eingeben";
+        }
+    }
+
+    updateUnits();
+    updateShapeFields();
+</script>
+</body>
+</html>
